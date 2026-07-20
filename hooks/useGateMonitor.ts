@@ -216,9 +216,11 @@ export function useGateMonitor({
       const transition = machine.observe(result.changed, timestamp);
       if (transition) logTransition(transition.gate, transition.status, transition.timestamp);
 
-      // Adaptive reference: refresh only while confirmed closed so slow lighting
-      // drift is absorbed but an open gate stays "open".
-      if (machine.current === "closed") {
+      // Adaptive reference: refresh ONLY when the gate is confirmed closed AND
+      // this frame shows no change. Freezing the reference the moment a change
+      // appears is critical — otherwise the reference would drift to track the
+      // opening gate and the change could never accumulate to a state flip.
+      if (machine.current === "closed" && !result.changed) {
         reference.delete();
         referenceRef.current[gate] = current.clone();
       }

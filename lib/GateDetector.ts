@@ -19,9 +19,9 @@ import type { CvScalar, Mat, OpenCV } from "@/types/opencv";
 import type { DetectionConfig, DetectionResult, GateId, GateStatus } from "@/types";
 
 export const DEFAULT_CONFIG: DetectionConfig = {
-  pixelDiffThreshold: 30,
-  changedRatioThreshold: 0.1,
-  ssimThreshold: 0.72,
+  pixelDiffThreshold: 28,
+  changedRatioThreshold: 0.07,
+  ssimThreshold: 0.8,
   blurKernel: 5,
   morphKernel: 3,
   stabilizationFrames: 3,
