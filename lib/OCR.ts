@@ -70,9 +70,9 @@ export class TimestampOCR {
     this.initializing = null;
   }
 
-  /** Upscale ×2 and apply a grayscale + threshold pass to sharpen the digits. */
+  /** Upscale ×3 and apply a grayscale + threshold pass to sharpen the digits. */
   private preprocess(imageData: ImageData): HTMLCanvasElement {
-    const scale = 2;
+    const scale = 3;
     const w = imageData.width;
     const h = imageData.height;
 

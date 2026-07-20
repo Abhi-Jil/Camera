@@ -31,7 +31,7 @@ export interface Mat {
   delete(): void;
   clone(): Mat;
   roi(rect: CvRect): Mat;
-  convertTo(dst: Mat, rtype: number): void;
+  convertTo(dst: Mat, rtype: number, alpha?: number, beta?: number): void;
   mul(other: Mat): Mat;
 }
 
@@ -56,6 +56,7 @@ export interface OpenCV {
   threshold(src: Mat, dst: Mat, thresh: number, maxval: number, type: number): number;
   morphologyEx(src: Mat, dst: Mat, op: number, kernel: Mat): void;
   getStructuringElement(shape: number, ksize: CvSize): Mat;
+  Canny(image: Mat, edges: Mat, threshold1: number, threshold2: number): void;
   countNonZero(src: Mat): number;
   mean(src: Mat): CvScalar;
 

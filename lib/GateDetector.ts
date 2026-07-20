@@ -19,9 +19,12 @@ import type { CvScalar, Mat, OpenCV } from "@/types/opencv";
 import type { DetectionConfig, DetectionResult, GateId, GateStatus } from "@/types";
 
 export const DEFAULT_CONFIG: DetectionConfig = {
-  pixelDiffThreshold: 28,
-  changedRatioThreshold: 0.07,
-  ssimThreshold: 0.8,
+  pixelDiffThreshold: 30,
+  changedRatioThreshold: 0.08,
+  edgeChangedThreshold: 0.05,
+  ssimThreshold: 0.85,
+  cannyLow: 50,
+  cannyHigh: 150,
   blurKernel: 5,
   morphKernel: 3,
   stabilizationFrames: 3,
@@ -84,6 +87,18 @@ function computeSSIM(cv: OpenCV, a: Mat, b: Mat): number {
 /**
  * Analyse a current ROI against its reference. Both Mats must be grayscale+blur
  * single-channel and identically sized. Neither Mat is deleted here.
+ *
+ * Accuracy strategy — distinguish a MOVING GATE from distractors:
+ *  1. Brightness-normalize `current` to the reference's mean so uniform
+ *     lighting / shadow / day↔night shifts cancel out (spec: ignore brightness
+ *     and shadows).
+ *  2. Edge-structural difference (Canny) is the PRIMARY signal: a gate is a
+ *     rigid high-contrast edge pattern; when it moves the edges change a lot,
+ *     whereas rain, shadows and brightness barely affect edges (spec: ignore
+ *     rain / trees / shadows).
+ *  3. An intensity-difference magnitude confirms the change is substantial.
+ * Transient distractors (vehicles, people crossing) are rejected downstream by
+ * the state machine's consecutive-frame stabilization.
  */
 export function analyzeROI(
   cv: OpenCV,
@@ -91,30 +106,58 @@ export function analyzeROI(
   reference: Mat,
   config: DetectionConfig,
 ): DetectionResult {
-  // --- Pixel difference path ---
+  const totalPixels = current.rows * current.cols || 1;
+  const k = config.morphKernel % 2 === 0 ? config.morphKernel + 1 : config.morphKernel;
+  const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(k, k));
+
+  // --- 1. Brightness normalization (illumination invariance) ---
+  const muRef = (cv.mean(reference) as CvScalar)[0] ?? 0;
+  const muCur = (cv.mean(current) as CvScalar)[0] ?? 0;
+  const norm = new cv.Mat();
+  // saturate_cast(1 * current + (muRef - muCur)) — shift current to ref brightness.
+  current.convertTo(norm, -1, 1, muRef - muCur);
+
+  // --- 2. Intensity difference (magnitude) ---
   const diff = new cv.Mat();
-  cv.absdiff(current, reference, diff);
+  cv.absdiff(norm, reference, diff);
   const thresh = new cv.Mat();
   cv.threshold(diff, thresh, config.pixelDiffThreshold, 255, cv.THRESH_BINARY);
   diff.delete();
-
-  const k = config.morphKernel % 2 === 0 ? config.morphKernel + 1 : config.morphKernel;
-  const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(k, k));
-  const opened = new cv.Mat();
-  cv.morphologyEx(thresh, opened, cv.MORPH_OPEN, kernel);
+  const openedDiff = new cv.Mat();
+  cv.morphologyEx(thresh, openedDiff, cv.MORPH_OPEN, kernel);
   thresh.delete();
+  const changedRatio = cv.countNonZero(openedDiff) / totalPixels;
+  openedDiff.delete();
+
+  // --- 3. Edge-structural difference (primary signal) ---
+  const edgeCur = new cv.Mat();
+  const edgeRef = new cv.Mat();
+  cv.Canny(norm, edgeCur, config.cannyLow, config.cannyHigh);
+  cv.Canny(reference, edgeRef, config.cannyLow, config.cannyHigh);
+  const edgeDiff = new cv.Mat();
+  cv.absdiff(edgeCur, edgeRef, edgeDiff);
+  edgeCur.delete();
+  edgeRef.delete();
+  const openedEdge = new cv.Mat();
+  cv.morphologyEx(edgeDiff, openedEdge, cv.MORPH_OPEN, kernel);
+  edgeDiff.delete();
+  const edgeChangedRatio = cv.countNonZero(openedEdge) / totalPixels;
+  openedEdge.delete();
+
+  // --- 4. SSIM (diagnostic / secondary structural measure) ---
+  const ssim = computeSSIM(cv, norm, reference);
+
+  norm.delete();
   kernel.delete();
 
-  const changedPixels = cv.countNonZero(opened);
-  const totalPixels = opened.rows * opened.cols || 1;
-  opened.delete();
-  const changedRatio = changedPixels / totalPixels;
+  // A real gate movement changes BOTH the edge structure AND a substantial
+  // area of the ROI. Requiring both rejects lighting-only and fine-texture
+  // (rain/leaf) changes that trip only one metric.
+  const changed =
+    edgeChangedRatio >= config.edgeChangedThreshold &&
+    changedRatio >= config.changedRatioThreshold;
 
-  // --- Structural path ---
-  const ssim = computeSSIM(cv, current, reference);
-
-  const changed = changedRatio >= config.changedRatioThreshold && ssim <= config.ssimThreshold;
-  return { ssim, changedRatio, changed };
+  return { ssim, changedRatio, edgeChangedRatio, changed };
 }
 
 /** Emitted when a gate commits a new confirmed state. */

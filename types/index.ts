@@ -62,8 +62,18 @@ export interface DetectionConfig {
   pixelDiffThreshold: number;
   /** Fraction of changed pixels (0..1) required to consider the ROI altered. */
   changedRatioThreshold: number;
-  /** SSIM below this value indicates significant structural change. */
+  /**
+   * Fraction of Canny edge pixels (0..1) that must differ from the reference.
+   * This is the structural signal — robust to brightness/shadow/rain because
+   * those barely affect edges, while a moving gate changes edges drastically.
+   */
+  edgeChangedThreshold: number;
+  /** SSIM below this value indicates significant structural change (diagnostic). */
   ssimThreshold: number;
+  /** Lower Canny hysteresis threshold. */
+  cannyLow: number;
+  /** Upper Canny hysteresis threshold. */
+  cannyHigh: number;
   /** Gaussian blur kernel size (odd number). */
   blurKernel: number;
   /** Morphological opening kernel size. */
@@ -80,8 +90,10 @@ export interface DetectionConfig {
 export interface DetectionResult {
   /** Structural Similarity Index (1 = identical). */
   ssim: number;
-  /** Fraction of pixels that changed (0..1). */
+  /** Fraction of pixels that changed after brightness normalization (0..1). */
   changedRatio: number;
+  /** Fraction of edge pixels that differ from the reference (0..1). */
+  edgeChangedRatio: number;
   /** True when the ROI is considered "open" relative to reference. */
   changed: boolean;
 }

@@ -48,7 +48,9 @@ rather than mistaken for movement. Thresholds live in `lib/GateDetector.ts`
 | --- | --- |
 | `pixelDiffThreshold` | Intensity delta for a pixel to count as changed |
 | `changedRatioThreshold` | Fraction of ROI pixels that must change |
-| `ssimThreshold` | SSIM below this = structural change |
+| `edgeChangedThreshold` | Fraction of Canny edge pixels that must differ (primary structural signal) |
+| `cannyLow` / `cannyHigh` | Canny edge-detection hysteresis thresholds |
+| `ssimThreshold` | SSIM below this = structural change (diagnostic) |
 | `stabilizationFrames` | Consecutive frames required before a state flip |
 | `ocrIntervalMs` | OCR cadence (ms) |
 | `ocrMinConfidence` | Minimum OCR confidence to accept a timestamp |
