@@ -27,7 +27,13 @@ export class TimestampOCR {
     if (this.initializing) return this.initializing;
 
     this.initializing = (async () => {
-      const worker = await createWorker("eng");
+      // Self-hosted assets (served from this app's own origin) so nothing is
+      // fetched from a third-party CDN — works behind restrictive firewalls.
+      const worker = await createWorker("eng", 1, {
+        workerPath: "/vendor/tesseract/worker.min.js",
+        corePath: "/vendor/tesseract",
+        langPath: "/vendor/tesseract",
+      });
       await worker.setParameters({
         // Timestamps only ever contain these characters.
         tessedit_char_whitelist: "0123456789-: ",

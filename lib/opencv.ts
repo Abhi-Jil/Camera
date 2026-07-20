@@ -14,7 +14,9 @@
 
 import type { OpenCV } from "@/types/opencv";
 
-const OPENCV_CDN_URL = "https://docs.opencv.org/4.x/opencv.js";
+// Self-hosted (served from this app's own origin under /public/vendor) so the
+// runtime loads even on networks that block third-party CDNs.
+const OPENCV_CDN_URL = "/vendor/opencv/opencv.js";
 const LOAD_TIMEOUT_MS = 90_000;
 const POLL_INTERVAL_MS = 150;
 
@@ -99,10 +101,7 @@ export function loadOpenCV(): Promise<OpenCV> {
         return;
       }
       if (performance.now() - start > LOAD_TIMEOUT_MS) {
-        fail(
-          "OpenCV.js took too long to load. Check that your network/firewall " +
-            "allows https://docs.opencv.org, then reload.",
-        );
+        fail("OpenCV.js took too long to initialise. Please reload the page.");
       }
     }, POLL_INTERVAL_MS);
 

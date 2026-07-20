@@ -125,8 +125,7 @@ export function useGateMonitor({
         const [cv] = await withTimeout(
           Promise.all([loadOpenCV(), ocrRef.current.init()]),
           100_000,
-          "Loading the CV/OCR models timed out. Check network/firewall access to " +
-            "docs.opencv.org and cdn.jsdelivr.net, then reload.",
+          "Loading the CV/OCR models timed out. Please reload the page.",
         );
         if (cancelled) return;
         cvRef.current = cv;
