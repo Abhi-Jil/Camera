@@ -30,9 +30,9 @@ export class TimestampOCR {
       // Self-hosted assets (served from this app's own origin) so nothing is
       // fetched from a third-party CDN — works behind restrictive firewalls.
       const worker = await createWorker("eng", 1, {
-        workerPath: "/vendor/tesseract/worker.min.js",
-        corePath: "/vendor/tesseract",
-        langPath: "/vendor/tesseract",
+        workerPath: "/vendor/ocrdata/worker.min.js",
+        corePath: "/vendor/ocrdata",
+        langPath: "/vendor/ocrdata",
       });
       await worker.setParameters({
         // Timestamps only ever contain these characters.

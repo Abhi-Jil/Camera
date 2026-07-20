@@ -15,8 +15,11 @@
 import type { OpenCV } from "@/types/opencv";
 
 // Self-hosted (served from this app's own origin under /public/vendor) so the
-// runtime loads even on networks that block third-party CDNs.
-const OPENCV_CDN_URL = "/vendor/opencv/opencv.js";
+// runtime loads even on networks that block third-party CDNs. The WASM is a
+// SEPARATE file (opencv_js.wasm in the same folder) loaded via async streaming
+// compile, so parsing never blocks the main thread. Path is versioned
+// (cvengine) to defeat any stale browser cache of an older inlined build.
+const OPENCV_CDN_URL = "/vendor/cvengine/opencv.js";
 const LOAD_TIMEOUT_MS = 90_000;
 const POLL_INTERVAL_MS = 150;
 
