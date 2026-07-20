@@ -107,15 +107,29 @@ export function useGateMonitor({
     setEngineStatus("loading");
     setEngineError(null);
 
+    const withTimeout = <T,>(p: Promise<T>, ms: number, label: string): Promise<T> =>
+      Promise.race([
+        p,
+        new Promise<T>((_, rej) =>
+          window.setTimeout(() => rej(new Error(label)), ms),
+        ),
+      ]);
+
     (async () => {
       try {
-        const cv = await loadOpenCV();
+        if (!ocrRef.current) ocrRef.current = new TimestampOCR();
+        // Load OpenCV (CV pipeline) and Tesseract (OCR) in parallel so the
+        // slower download does not serialise behind the other. A hard timeout
+        // guarantees the UI surfaces an error instead of spinning forever if a
+        // CDN is unreachable (e.g. blocked by a corporate firewall).
+        const [cv] = await withTimeout(
+          Promise.all([loadOpenCV(), ocrRef.current.init()]),
+          100_000,
+          "Loading the CV/OCR models timed out. Check network/firewall access to " +
+            "docs.opencv.org and cdn.jsdelivr.net, then reload.",
+        );
         if (cancelled) return;
         cvRef.current = cv;
-
-        if (!ocrRef.current) ocrRef.current = new TimestampOCR();
-        await ocrRef.current.init();
-        if (cancelled) return;
 
         if (!grabberRef.current) grabberRef.current = new FrameGrabber();
         if (!machinesRef.current) {
